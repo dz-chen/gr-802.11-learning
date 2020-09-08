@@ -23,6 +23,9 @@
 namespace gr {
 namespace ieee802_11 {
 
+/*
+类名是sync_short;IEEE802_11_API是一个宏,是对这个类的描述
+*/
 class IEEE802_11_API sync_short : virtual public block
 {
 public:

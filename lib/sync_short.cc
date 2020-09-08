@@ -25,6 +25,10 @@ using namespace gr::ieee802_11;
 static const int MIN_GAP = 480;
 static const int MAX_SAMPLES = 540 * 80;
 
+/*
+    sync_short_impl:作用?
+    继承自:sync_short,sync_short继承自gunradio的bolck类 => block类中包含一些虚函数(如general_work),需要实现
+*/
 class sync_short_impl : public sync_short {
 
 public:
