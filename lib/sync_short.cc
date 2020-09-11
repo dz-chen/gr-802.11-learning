@@ -38,7 +38,7 @@ sync_short_impl(double threshold, unsigned int min_plateau, bool log, bool debug
 			gr::io_signature::make(1, 1, sizeof(gr_complex))),
 		d_log(log),
 		d_debug(debug),
-		d_state(SEARCH),
+		d_state(SEARCH),     /*d_state 初始化为SEARCH*/
 		d_plateau(0),
 		d_freq_offset(0),
 		d_copied(0),
@@ -48,13 +48,21 @@ sync_short_impl(double threshold, unsigned int min_plateau, bool log, bool debug
 	set_tag_propagation_policy(block::TPP_DONT);
 }
 
+/*
+    input_items:指针数组,这里共三个指针,前两个指向复数,最后一个指向浮点数
+*/
 int general_work (int noutput_items, gr_vector_int& ninput_items,
 		gr_vector_const_void_star& input_items,
 		gr_vector_void_star& output_items) {
-
+    
+    /*gr_complex       => typedef std::complex<float>			gr_complex;
+      gr_vector_int    => typedef std::vector<int>			gr_vector_int;
+      gr_vector_const_void_star => typedef std::vector<const void *>		gr_vector_const_void_star; 
+    */
 	const gr_complex *in = (const gr_complex*)input_items[0];
 	const gr_complex *in_abs = (const gr_complex*)input_items[1];
 	const float *in_cor = (const float*)input_items[2];
+
 	gr_complex *out = (gr_complex*)output_items[0];
 
 	int noutput = noutput_items;
@@ -133,6 +141,7 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 }
 
 void insert_tag(uint64_t item, double freq_offset, uint64_t input_item) {
+    /*若开启了打印日志选项,则打印这句*/
 	mylog(boost::format("frame start at in: %2% out: %1%") % item % input_item);
 
 	const pmt::pmt_t key = pmt::string_to_symbol("wifi_start");
