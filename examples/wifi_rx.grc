@@ -188,7 +188,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>5890000000</value>
+      <value>5825000000</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -739,7 +739,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -900,7 +900,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>False</value>
     </param>
     <param>
       <key>file</key>
@@ -998,7 +998,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1045,7 +1045,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1096,7 +1096,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>fft_size</key>
@@ -1163,7 +1163,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>0</value>
+      <value>False</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1210,11 +1210,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(880, 676)</value>
+      <value>(864, 676)</value>
     </param>
     <param>
       <key>_rotation</key>
@@ -1226,7 +1226,7 @@
     </param>
     <param>
       <key>log</key>
-      <value>False</value>
+      <value>True</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -1265,7 +1265,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>freq</key>
@@ -1410,7 +1410,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1426,7 +1426,7 @@
     </param>
     <param>
       <key>log</key>
-      <value>False</value>
+      <value>True</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -1457,7 +1457,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1473,7 +1473,7 @@
     </param>
     <param>
       <key>log</key>
-      <value>False</value>
+      <value>True</value>
     </param>
     <param>
       <key>maxoutbuf</key>
@@ -1508,7 +1508,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1567,7 +1567,7 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
@@ -1922,11 +1922,11 @@
     </param>
     <param>
       <key>_enabled</key>
-      <value>1</value>
+      <value>True</value>
     </param>
     <param>
       <key>_coordinate</key>
-      <value>(1120, 492)</value>
+      <value>(1164, 520)</value>
     </param>
     <param>
       <key>gui_hint</key>
@@ -1934,7 +1934,7 @@
     </param>
     <param>
       <key>_rotation</key>
-      <value>0</value>
+      <value>270</value>
     </param>
     <param>
       <key>grid</key>
@@ -2265,7 +2265,7 @@
     </param>
     <param>
       <key>ant0</key>
-      <value>TX/RX</value>
+      <value></value>
     </param>
     <param>
       <key>bw0</key>
