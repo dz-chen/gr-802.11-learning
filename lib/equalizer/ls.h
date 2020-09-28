@@ -25,13 +25,14 @@ namespace gr {
 namespace ieee802_11 {
 namespace equalizer {
 
+/*ls:一种信道估计算法:https://blog.csdn.net/qq_37989552/article/details/102908918 */
 class ls: public base {
 public:
 	virtual void equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boost::shared_ptr<gr::digital::constellation> mod);
 	virtual double get_snr();
 private:
-	gr_complex d_H[64];
-	double d_snr;
+	gr_complex d_H[64];     // Y=HX+N,x是发送信号,Y是接收信号,计算Ｈ就是信道估计
+	double d_snr;           // snr:信噪比
 };
 
 } /* namespace channel_estimation */

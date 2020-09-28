@@ -21,22 +21,28 @@
 
 using namespace gr::ieee802_11::equalizer;
 
+/*ls:信道估计算法*/
+/*
+    被调用:d_equalizer->equalize(current_symbol, d_current_symbol,symbols, out + o * 48, d_frame_mod);
+    Y=HX+N ,H是要估计的信道特征
+*/
+
 void ls::equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boost::shared_ptr<gr::digital::constellation> mod) {
 
-	if(n == 0) {
-		std::memcpy(d_H, in, 64 * sizeof(gr_complex));
-
+	if(n == 0) {    //新的一帧
+		std::memcpy(d_H, in, 64 * sizeof(gr_complex));     //用in初始化d_H
 	} else if(n == 1) {
 		double signal = 0;
 		double noise = 0;
 		for(int i = 0; i < 64; i++) {
-			if((i == 32) || (i < 6) || ( i > 58)) {
+            // 前6个和后5个都是子载波的保护带宽
+			if((i == 32) || (i < 6) || ( i > 58)) {   //剔除了1+6+5=12个数据,剩余52个=48个数据副载波+4个导频副载波 ?参考:https://blog.csdn.net/rs_network/article/details/49162455
 				continue;
 			}
 			noise += std::pow(std::abs(d_H[i] - in[i]), 2);
 			signal += std::pow(std::abs(d_H[i] + in[i]), 2);
-			d_H[i] += in[i];
-			d_H[i] /= LONG[i] * gr_complex(2, 0);
+			d_H[i] += in[i];   //2Y (n=1时用in初始化了d_H)
+			d_H[i] /= LONG[i] * gr_complex(2, 0);   //2X ;  LONG[i]即Freq X (Sync_long)
 		}
 
 		d_snr = 10 * std::log10(signal / noise / 2);

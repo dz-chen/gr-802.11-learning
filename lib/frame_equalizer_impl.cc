@@ -34,6 +34,15 @@ frame_equalizer::make(Equalizer algo, double freq, double bw, bool log, bool deb
 }
 
 
+/*
+    responsible for phase offset correction and channel estimation
+
+    1.As the sampling times of sender and receiver are not synchronized and as the
+    symbol alignment is not perfect, a phase offset is introduced
+
+    2.
+*/
+
 frame_equalizer_impl::frame_equalizer_impl(Equalizer algo, double freq, double bw, bool log, bool debug) :
 	gr::block("frame_equalizer",
 			gr::io_signature::make(1, 1, 64 * sizeof(gr_complex)),
@@ -59,6 +68,7 @@ frame_equalizer_impl::~frame_equalizer_impl() {
 }
 
 
+/*设置信道估计算法*/
 void
 frame_equalizer_impl::set_algorithm(Equalizer algo) {
 	gr::thread::scoped_lock lock(d_mutex);
@@ -202,7 +212,7 @@ frame_equalizer_impl::general_work (int noutput_items,
 			d_er = (1-alpha) * d_er + alpha * er;
 		}
 
-		// do equalization
+		// do equalization => 进行信道估计/均衡 => equalizer/ls.cc
 		d_equalizer->equalize(current_symbol, d_current_symbol,
 				symbols, out + o * 48, d_frame_mod);
 

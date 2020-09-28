@@ -26,7 +26,7 @@ static const int MIN_GAP = 480;
 static const int MAX_SAMPLES = 540 * 80;
 
 /*
-    sync_short_impl:作用?
+    sync_short_impl:作用 => 根据输入的数据,检测出数据帧(依据相关结果),再继续传递进行后续处理
     继承自:sync_short,sync_short继承自gunradio的bolck类 => block类中包含一些虚函数(如general_work),需要实现
 */
 class sync_short_impl : public sync_short {
@@ -50,6 +50,12 @@ sync_short_impl(double threshold, unsigned int min_plateau, bool log, bool debug
 
 /*
     input_items:指针数组,这里共三个指针,前两个指向复数,最后一个指向浮点数
+    输入:    in  => usrp采样的数据
+            abs => ?
+            cor => 采样数据在窗口内的自相关数据
+        => If it detects a plateau in the autocorrelation stream, it pipes a fixed number
+            of samples into the rest of the signal processing pipeline; otherwise it drops the samples.
+
 */
 int general_work (int noutput_items, gr_vector_int& ninput_items,
 		gr_vector_const_void_star& input_items,

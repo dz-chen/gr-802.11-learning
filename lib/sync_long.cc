@@ -31,6 +31,20 @@ bool compare_abs(const std::pair<gr_complex, int>& first, const std::pair<gr_com
 	return abs(get<0>(first)) > abs(get<0>(second));
 }
 
+/*
+    applies frequency offset correction and symbol alignment
+    频率偏移纠正:Ideally,
+            during the short sequence a sample s[n] should correspond to
+            the sample s[n + 16] due to its cyclic property. However, if
+            noise and a frequency offset are introduced, this is no longer
+            the case, and s[n] s[n + 16] is not a real number, as in the
+            idealized case. => 对s[n]纠正后变为s'[n]
+    符号对齐:Each OFDM symbol spans 80 samples, consisting
+            of 16 samples of cyclic prefix and 64 data samples. The
+            task of symbol alignment is to calculate where the symbol
+            starts
+*/
+
 class sync_long_impl : public sync_long {
 
 public:
@@ -236,13 +250,14 @@ private:
 	const int  SYNC_LENGTH;
 
 	static const std::vector<gr_complex> LONG;
-};
+};   // end of class sync_long_impl
 
 sync_long::sptr
 sync_long::make(unsigned int sync_length, bool log, bool debug) {
 	return gnuradio::get_initial_sptr(new sync_long_impl(sync_length, log, debug));
 }
 
+/* LONG:64个 */
 const std::vector<gr_complex> sync_long_impl::LONG = {
 
 gr_complex(-0.0455, -1.0679), gr_complex( 0.3528, -0.9865), gr_complex( 0.8594,  0.7348), gr_complex( 0.1874,  0.2475),

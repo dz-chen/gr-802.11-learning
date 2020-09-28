@@ -188,7 +188,7 @@
     </param>
     <param>
       <key>value</key>
-      <value>5825000000</value>
+      <value>2462000000</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -497,7 +497,7 @@
     </param>
     <param>
       <key>labels</key>
-      <value>["5 MHz", "10 MHz", "20 MHz"]</value>
+      <value>["2 MHz", "5 MHz", "10 MHz", "20 MHz"]</value>
     </param>
     <param>
       <key>num_opts</key>
@@ -525,7 +525,7 @@
     </param>
     <param>
       <key>options</key>
-      <value>[5e6, 10e6, 20e6]</value>
+      <value>[2e6,5e6, 10e6, 20e6]</value>
     </param>
     <param>
       <key>orient</key>
@@ -1406,7 +1406,7 @@
     </param>
     <param>
       <key>debug</key>
-      <value>True</value>
+      <value>False</value>
     </param>
     <param>
       <key>_enabled</key>
@@ -2265,7 +2265,7 @@
     </param>
     <param>
       <key>ant0</key>
-      <value></value>
+      <value>TX/RX</value>
     </param>
     <param>
       <key>bw0</key>
