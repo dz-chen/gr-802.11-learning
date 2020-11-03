@@ -26,6 +26,7 @@ namespace ieee802_11 {
 namespace equalizer {
 
 /*ls:一种信道估计算法:https://blog.csdn.net/qq_37989552/article/details/102908918 */
+// 继承自base,frame_equalizer_impl中通过多态调用
 class ls: public base {
 public:
 	virtual void equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boost::shared_ptr<gr::digital::constellation> mod);

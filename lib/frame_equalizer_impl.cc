@@ -43,6 +43,13 @@ frame_equalizer::make(Equalizer algo, double freq, double bw, bool log, bool deb
     2.
 */
 
+/*
+* 输入port:make(1, 1, 64 * sizeof(gr_complex)) 
+*   => 取决于输入fft size, fftsize 为64
+*      为什么是64? 因为wifi一个ofdm符号是64个子载波(11个保护带宽,48个数据子载波,4个导频,1个DC)
+* 输出port:make(1, 1, 48)) => 输出类型uint8_t(unsigned char); 
+*      为什么是48个输出? => 48个数据子载波?
+*/
 frame_equalizer_impl::frame_equalizer_impl(Equalizer algo, double freq, double bw, bool log, bool debug) :
 	gr::block("frame_equalizer",
 			gr::io_signature::make(1, 1, 64 * sizeof(gr_complex)),
@@ -123,12 +130,18 @@ frame_equalizer_impl::general_work (int noutput_items,
 	gr::thread::scoped_lock lock(d_mutex);
 
 	const gr_complex *in = (const gr_complex *) input_items[0];
-	uint8_t *out = (uint8_t *) output_items[0];
+	uint8_t *out = (uint8_t *) output_items[0];   // typedef unsigned char uint8_t
 
-	int i = 0;
-	int o = 0;
-	gr_complex symbols[48];
-	gr_complex current_symbol[64];
+	int i = 0;              //记录消耗的输入item个数
+	int o = 0;              //记录输出的item个数
+
+    /*
+    * d_current_symbol:  记录当前item的编号,一个symbol就是一个item; 满一帧后重新从0计算
+    *                    前两个symbol是LTF、第三个symbol是signal field
+    * d_frame_symbols :  ?
+    */
+	gr_complex symbols[48];             // ?? equalize、message_port_pub能使用上
+	gr_complex current_symbol[64];      // 循环中的当前输入符号,64个子载波;
 
 	dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items << std::endl;
 
@@ -149,7 +162,7 @@ frame_equalizer_impl::general_work (int noutput_items,
 			dout << "epsilon: " << d_epsilon0 << std::endl;
 		}
 
-		// not interesting -> skip
+		// not interesting -> skip => 注意：不会输出到out中!!!
 		if(d_current_symbol > (d_frame_symbols + 2)) {
 			i++;
 			continue;
@@ -157,7 +170,7 @@ frame_equalizer_impl::general_work (int noutput_items,
 
 		std::memcpy(current_symbol, in + i*64, 64*sizeof(gr_complex));
 
-		// compensate sampling offset
+		// compensate sampling offset => 补偿采样偏移
 		for(int i = 0; i < 64; i++) {
 			current_symbol[i] *= exp(gr_complex(0, 2*M_PI*d_current_symbol*80*(d_epsilon0 + d_er)*(i-32)/64));
 		}
@@ -165,6 +178,9 @@ frame_equalizer_impl::general_work (int noutput_items,
 		gr_complex p = equalizer::base::POLARITY[(d_current_symbol - 2) % 127];
 
 		double beta;
+        // 前两个symbol是LTF、第三个symbol是signal field
+        // std::arg => returns the phase angle of z in the interval (−π; π)
+        // 11 25 39 53应该是导频子载波
 		if(d_current_symbol < 2) {
 			beta = arg(
 					current_symbol[11] -
@@ -207,12 +223,12 @@ frame_equalizer_impl::general_work (int noutput_items,
 
 		// update estimate of residual frequency offset
 		if(d_current_symbol >= 2) {
-
 			double alpha = 0.1;
 			d_er = (1-alpha) * d_er + alpha * er;
 		}
 
 		// do equalization => 进行信道估计/均衡 => equalizer/ls.cc
+        // 48个数据子载波直接输出到out
 		d_equalizer->equalize(current_symbol, d_current_symbol,
 				symbols, out + o * 48, d_frame_mod);
 

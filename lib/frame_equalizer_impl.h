@@ -26,6 +26,9 @@
 namespace gr {
 namespace ieee802_11 {
 
+
+//virtual public 声明其为虚基类; 保证父类的公共祖宗类在子类中只占一块内存区域
+// 参考:https://www.cnblogs.com/qrlozte/p/4168807.html
 class frame_equalizer_impl : virtual public frame_equalizer
 {
 
@@ -50,7 +53,7 @@ private:
 	bool decode_signal_field(uint8_t *rx_bits);
 	void deinterleave(uint8_t *rx_bits);
 
-	equalizer::base *d_equalizer;
+	equalizer::base *d_equalizer;           //信道估计/均衡器
 	gr::thread::mutex d_mutex;
 	std::vector<gr::tag_t> tags;
 	bool d_debug;
