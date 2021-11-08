@@ -21,7 +21,7 @@
 #include <gnuradio/block.h>
 
 enum Encoding {
-	BPSK_1_2  = 0,
+	BPSK_1_2  = 0,              // 1_2 表示 rate 为1/2
 	BPSK_3_4  = 1,
 	QPSK_1_2  = 2,
 	QPSK_3_4  = 3,

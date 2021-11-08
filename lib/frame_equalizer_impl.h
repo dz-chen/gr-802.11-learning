@@ -53,9 +53,9 @@ private:
 	bool decode_signal_field(uint8_t *rx_bits);
 	void deinterleave(uint8_t *rx_bits);
 
-	equalizer::base *d_equalizer;           //信道估计/均衡器
+	equalizer::base *d_equalizer;           // 信道估计/均衡器
 	gr::thread::mutex d_mutex;
-	std::vector<gr::tag_t> tags;
+	std::vector<gr::tag_t> tags;            // 获取上一个 block 的 tag
 	bool d_debug;
 	bool d_log;
 	int  d_current_symbol;
@@ -69,14 +69,18 @@ private:
 	double d_epsilon0;
 	gr_complex d_prev_pilots[4];
 
-	int  d_frame_bytes;
+	int  d_frame_bytes;                 // 整个wifi 帧有多少字节（来自signal 部分）
 	int  d_frame_symbols;
 	int  d_frame_encoding;
 
 	uint8_t d_deinterleaved[48];
 	gr_complex symbols[48];
 
-	boost::shared_ptr<gr::digital::constellation> d_frame_mod;
+    /*
+     * 调制方式，constellation_bpsk、constellation_qpsk、constellation_16qam、constellation_64qam之一
+     * 在gr-ieee802-11信道估计/均衡过程中，d_frame_mod 默认为 bpsk， 解码 signal 后将会根据 signal 相应字段更新 d_frame_mod
+     */ 
+	boost::shared_ptr<gr::digital::constellation> d_frame_mod; 
 	constellation_bpsk::sptr d_bpsk;
 	constellation_qpsk::sptr d_qpsk;
 	constellation_16qam::sptr d_16qam;

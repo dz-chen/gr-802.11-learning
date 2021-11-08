@@ -31,19 +31,7 @@ bool compare_abs(const std::pair<gr_complex, int>& first, const std::pair<gr_com
 	return abs(get<0>(first)) > abs(get<0>(second));
 }
 
-/*
-    applies frequency offset correction and symbol alignment
-    频率偏移纠正:Ideally,
-            during the short sequence a sample s[n] should correspond to
-            the sample s[n + 16] due to its cyclic property. However, if
-            noise and a frequency offset are introduced, this is no longer
-            the case, and s[n] s[n + 16] is not a real number, as in the
-            idealized case. => 对s[n]纠正后变为s'[n]
-    符号对齐:Each OFDM symbol spans 80 samples, consisting
-            of 16 samples of cyclic prefix and 64 data samples. The
-            task of symbol alignment is to calculate where the symbol
-            starts
-*/
+
 
 class sync_long_impl : public sync_long {
 
@@ -66,6 +54,16 @@ sync_long_impl(unsigned int sync_length, bool log, bool debug) : block("sync_lon
 	gr::fft::free(d_correlation);
 }
 
+
+/*
+ * 功能描述：
+ *  主要是 Symbol Alignment，也就是找到符号开始的地方，提取出其中数据对应的符号（去掉循环前缀）=> 之后才在后面的block中进行傅里叶变换
+ * 
+ * 输入参数：
+ *  in：经过wifi sync short 过滤后（找到了帧起始位置、对采样数据进行了粗频偏纠正...）的物理层帧，这些数据应该是PLCP层帧从长训练序列开始的部分？
+ *  in_delayed：in 对应的数据流经过320个 sample 的延迟后的数据  
+ * 
+ */
 int general_work (int noutput, gr_vector_int& ninput_items,
 		gr_vector_const_void_star& input_items,
 		gr_vector_void_star& output_items) {
@@ -78,94 +76,106 @@ int general_work (int noutput, gr_vector_int& ninput_items,
 			ninput_items[1] << "  noutput " << noutput <<
 			"   state " << d_state << std::endl;
 
-	int ninput = std::min(std::min(ninput_items[0], ninput_items[1]), 8192);
-
-	const uint64_t nread = nitems_read(0);
+    /**
+     * 这部分代码在获取上一个block(sync short)创建的stream tags，相关资料参考：https://wiki.gnuradio.org/index.php/Stream_Tags
+     * 1.类成员 std::vector<gr::tag_t> d_tags;
+     * 2.gr::block::get_tags_in_range: Gets all tags from a particular input port between a certain range of items (in absolute item time).
+     *  void get_tags_in_range(std::vector<tag_t> &v,
+     *                      unsigned int which_input,
+     *                      uint64_t abs_start,
+     *                      uint64_t abs_end);
+     *  =>  this call just returns any tags between the given range of items(对下面的调用而言就是nread - nread + ninput)
+     */ 
+	int ninput = std::min(std::min(ninput_items[0], ninput_items[1]), 8192);    // （所有输入port中）最小的输入元素个数
+	const uint64_t nread = nitems_read(0);                                      // 应该是读指针对应元素在整个port中的绝对位置
 	get_tags_in_range(d_tags, 0, nread, nread + ninput);
+
 	if (d_tags.size()) {
+        // 根据tags中的offset排序
 		std::sort(d_tags.begin(), d_tags.end(), gr::tag_t::offset_compare);
 
 		const uint64_t offset = d_tags.front().offset;
 
 		if(offset > nread) {
 			ninput = offset - nread;
-		} else {
+		}
+        else {
 			if(d_offset && (d_state == SYNC)) {
 				throw std::runtime_error("wtf");
 			}
 			if(d_state == COPY) {
 				d_state = RESET;
 			}
-			d_freq_offset_short = pmt::to_double(d_tags.front().value);
+			d_freq_offset_short = pmt::to_double(d_tags.front().value);         // 上一个block(sync short)的tag streams中保存的频偏
 		}
 	}
-
 
 	int i = 0;
 	int o = 0;
 
 	switch(d_state) {
 
-	case SYNC:
-		d_fir.filterN(d_correlation, in, std::min(SYNC_LENGTH, std::max(ninput - 63, 0)));
+        /*
+         * 主要目的是寻找 OFDM 符号，找到之后状态变为 COPY，在 COPY 状态下将数据传递到下一个 block
+         */ 
+        case SYNC:
+            d_fir.filterN(d_correlation, in, std::min(SYNC_LENGTH, std::max(ninput - 63, 0)));  // 匹配滤波
+            
+            /*
+             * 对于输入ninput-63前的所有采样点，TODO 
+             * 为何是63而不是64 ？
+             */ 
+            while(i + 63 < ninput) { 
+                d_cor.push_back(pair<gr_complex, int>(d_correlation[i], d_offset));
+                i++;
+                d_offset++;
+                if(d_offset == SYNC_LENGTH) {
+                    search_frame_start();
+                    mylog(boost::format("LONG: frame start at %1%") % d_frame_start);
+                    d_offset = 0;
+                    d_count = 0;
+                    d_state = COPY;
+                    break;
+                }
+            }
+            break;
 
-		while(i + 63 < ninput) {
 
-			d_cor.push_back(pair<gr_complex, int>(d_correlation[i], d_offset));
+        /**
+         * 将OFDM符号对应的采样拷贝到输出，这里也有一个频偏纠正（sync short也有频偏纠正）
+         */ 
+        case COPY:
+            while(i < ninput && o < noutput) {
+                int rel = d_offset - d_frame_start;
+                if(!rel)  {
+                    add_item_tag(0, nitems_written(0),
+                            pmt::string_to_symbol("wifi_start"),
+                            pmt::from_double(d_freq_offset_short - d_freq_offset),
+                            pmt::string_to_symbol(name()));
+                }
+                if(rel >= 0 && (rel < 128 || ((rel - 128) % 80) > 15)) {
+                    out[o] = in_delayed[i] * exp(gr_complex(0, d_offset * d_freq_offset));
+                    o++;
+                }
+                i++;
+                d_offset++;
+            }
+            break;
 
-			i++;
-			d_offset++;
-
-			if(d_offset == SYNC_LENGTH) {
-				search_frame_start();
-				mylog(boost::format("LONG: frame start at %1%") % d_frame_start);
-				d_offset = 0;
-				d_count = 0;
-				d_state = COPY;
-
-				break;
-			}
-		}
-
-		break;
-
-	case COPY:
-		while(i < ninput && o < noutput) {
-
-			int rel = d_offset - d_frame_start;
-
-			if(!rel)  {
-				add_item_tag(0, nitems_written(0),
-						pmt::string_to_symbol("wifi_start"),
-						pmt::from_double(d_freq_offset_short - d_freq_offset),
-						pmt::string_to_symbol(name()));
-			}
-
-			if(rel >= 0 && (rel < 128 || ((rel - 128) % 80) > 15)) {
-				out[o] = in_delayed[i] * exp(gr_complex(0, d_offset * d_freq_offset));
-				o++;
-			}
-
-			i++;
-			d_offset++;
-		}
-
-		break;
-
-	case RESET: {
-		while(o < noutput) {
-			if(((d_count + o) % 64) == 0) {
-				d_offset = 0;
-				d_state = SYNC;
-				break;
-			} else {
-				out[o] = 0;
-				o++;
-			}
-		}
-
-		break;
-	}
+        case RESET: {
+            while(o < noutput) {
+                if(((d_count + o) % 64) == 0) {
+                    d_offset = 0;
+                    d_state = SYNC;
+                    break;
+                } 
+                else {
+                    out[o] = 0;
+                    o++;
+                }
+            }
+            break;
+        }
 	}
 
 	dout << "produced : " << o << " consumed: " << i << std::endl;
@@ -183,13 +193,18 @@ void forecast (int noutput_items, gr_vector_int &ninput_items_required) {
 	if(d_state == SYNC) {
 		ninput_items_required[0] = 64;
 		ninput_items_required[1] = 64;
-
-	} else {
+	} 
+    else {
 		ninput_items_required[0] = noutput_items;
 		ninput_items_required[1] = noutput_items;
 	}
 }
 
+
+/**
+ * 注意会修改： d_frame_start、d_freq_offset
+ * 
+ */ 
 void search_frame_start() {
 
 	// sort list (highest correlation first)
@@ -210,10 +225,12 @@ void search_frame_start() {
 			if(get<1>(vec[i]) > get<1>(vec[k])) {
 				first = get<0>(vec[k]);
 				second = get<0>(vec[i]);
-			} else {
+			}
+            else {
 				first = get<0>(vec[i]);
 				second = get<0>(vec[k]);
 			}
+
 			int diff  = abs(get<1>(vec[i]) - get<1>(vec[k]));
 			if(diff == 64) {
 				d_frame_start = min(get<1>(vec[i]), get<1>(vec[k]));
@@ -221,10 +238,12 @@ void search_frame_start() {
 				// nice match found, return immediately
 				return;
 
-			} else if(diff == 63) {
+			}
+            else if(diff == 63) {
 				d_frame_start = min(get<1>(vec[i]), get<1>(vec[k]));
 				d_freq_offset = arg(first * conj(second)) / 63;
-			} else if(diff == 65) {
+			}
+            else if(diff == 65) {
 				d_frame_start = min(get<1>(vec[i]), get<1>(vec[k]));
 				d_freq_offset = arg(first * conj(second)) / 65;
 			}
@@ -238,18 +257,18 @@ private:
 	int         d_offset;
 	int         d_frame_start;
 	float       d_freq_offset;
-	double      d_freq_offset_short;
+	double      d_freq_offset_short;            // sync short block 中计算的频偏
 
-	gr_complex *d_correlation;
-	list<pair<gr_complex, int> > d_cor;
-	std::vector<gr::tag_t> d_tags;
-	gr::filter::kernel::fir_filter_ccc d_fir;
+	gr_complex *d_correlation;                  // in[]进行匹配滤波后的结果
+	list<pair<gr_complex, int> > d_cor;         // 
+	std::vector<gr::tag_t> d_tags;              // 用来承接上一个block创建的stream tag
+	gr::filter::kernel::fir_filter_ccc d_fir;   // gnuradio实现的滤波器
 
 	const bool d_log;
 	const bool d_debug;
-	const int  SYNC_LENGTH;
+	const int  SYNC_LENGTH;                     // 流图中设置参数为320的理由？
 
-	static const std::vector<gr_complex> LONG;
+	static const std::vector<gr_complex> LONG;  // 用于初始化 d_fir 滤波器
 };   // end of class sync_long_impl
 
 sync_long::sptr

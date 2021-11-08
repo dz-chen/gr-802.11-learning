@@ -21,28 +21,30 @@
 
 using namespace gr::ieee802_11::equalizer;
 
-/*ls:信道估计算法 => least square:最小二乘*/
-/**
-* 被调用:d_equalizer->equalize(current_symbol, d_current_symbol,symbols, out + o * 48, d_frame_mod);
-* Y=HX+N ,H是要估计的信道特征
-* 输入参数=>
-*       in:当前符号(经过补偿后的)
-*       n :当前符号在帧中的编号(帧已经去掉了STF)
-*       symbols:48个unsigned char; => 经过信道估计后反算出来的symbol中的数据部分
-*       bits:输出数据
-*       mod:
-* 
-* 处理流程:
-*       遇到symbol 0(LTF的第一个符号) => 初始化H      
-*       遇到symbol 1(LTF的第二个符号) => 进行信道估计
-*       遇到symbol 2及以上 => 直接计算信道均衡(用信道估计的参数反算原始symbol)后的数据
-**/
+// ls:信道估计算法 => least square:最小二乘
+
+/*
+ * 被调用:d_equalizer->equalize(current_symbol, d_current_symbol,symbols, out + o * 48, d_frame_mod);
+ * Y=HX+N ,H是要估计的信道特征
+ * 输入参数=>
+ *       in:当前符号(经过补偿后的)
+ *       n :当前符号在帧中的编号(帧已经去掉了STF)
+ *       symbols: 48个gr_complex; => 经过信道估计后反算出来的symbol中的数据部分
+ *       bits:输出数据
+ *       mod:
+ * 
+ * 处理流程:
+ *       遇到symbol 0(LTF的第一个符号) => 初始化H      
+ *       遇到symbol 1(LTF的第二个符号) => 进行信道估计
+ *       遇到symbol 2及以上 => 直接计算信道均衡(用信道估计的参数反算原始symbol)后的数据
+ */
 
 void ls::equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boost::shared_ptr<gr::digital::constellation> mod) {
 
 	if(n == 0) {    //新的一帧
 		std::memcpy(d_H, in, 64 * sizeof(gr_complex));     //用in初始化d_H
-	} else if(n == 1) {
+	} 
+    else if(n == 1) {
 		double signal = 0;
 		double noise = 0;
 		for(int i = 0; i < 64; i++) {
@@ -60,16 +62,22 @@ void ls::equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boo
 
 		d_snr = 10 * std::log10(signal / noise / 2);
 
-	} else {
+	}
+    else {
 		int c = 0;
 		for(int i = 0; i < 64; i++) {
             // 剔除保护带宽、导频、DC
 			if( (i == 11) || (i == 25) || (i == 32) || (i == 39) || (i == 53) || (i < 6) || ( i > 58)) {
 				continue;
-			} else {
+			}
+            else {
+                // symbols 其实就是信道估计后的数据子载波数据
 				symbols[c] = in[i] / d_H[i];
-                // 返回对应数据在星座图中最匹配的点 
-                // => 与调制方法有关; 参考frame_equalizer_impl.cc中d_frame_mod的设置
+                
+                /*
+                 * 返回对应数据在星座图中最匹配的点 
+                 * => 与调制方法有关; 参考frame_equalizer_impl.cc中 d_frame_mod 的设置
+                 */
 				bits[c] = mod->decision_maker(&symbols[c]);
 				c++;
 			}

@@ -35,6 +35,11 @@ parse_mac_impl(bool log, bool debug) :
 		d_debug(debug) {
 
 	message_port_register_in(pmt::mp("in"));
+
+    /*
+     * parse() 函数负责进行 parse_mac
+     * 输入数据来自decode_mac block ，注意是通过 mesage 实现数据传递，故这个block没有 general_work() ！
+     */
 	set_msg_handler(pmt::mp("in"), boost::bind(&parse_mac_impl::parse, this, _1));
 
 	message_port_register_out(pmt::mp("fer"));

@@ -45,6 +45,12 @@ decode_mac_impl(bool log, bool debug) :
 	message_port_register_out(pmt::mp("out"));
 }
 
+
+/**
+ * 
+ * 输入：
+ *  in：uint8_t* 类型，一个item包含48个uint8_t
+ */ 
 int general_work (int noutput_items, gr_vector_int& ninput_items,
 		gr_vector_const_void_star& input_items,
 		gr_vector_void_star& output_items) {
@@ -60,8 +66,7 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 
 	while(i < ninput_items[0]) {
 
-		get_tags_in_range(tags, 0, nread + i, nread + i + 1,
-			pmt::string_to_symbol("wifi_start"));
+		get_tags_in_range(tags, 0, nread + i, nread + i + 1,pmt::string_to_symbol("wifi_start"));
 
 		if(tags.size()) {
 			if (d_frame_complete == false) {
@@ -88,7 +93,8 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 				dout << "Decode MAC: frame start -- len " << len_data
 					<< "  symbols " << frame.n_sym << "  encoding "
 					<< encoding << std::endl;
-			} else {
+			}
+            else {
 				dout << "Dropping frame which is too large (symbols or bits)" << std::endl;
 			}
 		}
@@ -100,6 +106,10 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 
 			if(copied == d_frame.n_sym) {
 				dout << "received complete frame - decoding" << std::endl;
+                
+                /*
+                 * 解码：整个decode_mac 的核心，在信道估计/均衡 block中，解码signal时也有类似的操作
+                 */ 
 				decode();
 				in += 48;
 				i++;
@@ -117,6 +127,11 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 	return 0;
 }
 
+/*
+ * 主要包含以下步骤（信道估计/均衡 时解码 signal field 也是类似的步骤）：
+ * Deinterleaving => Convolutional Decoding and Puncturing => Descrambling => Output
+ *  => : After the decoding process, the payload is packed into a GNU Radio message and passed to subsequent blocks in the flow graph
+ */ 
 void decode() {
 
 	for(int i = 0; i < d_frame.n_sym * 48; i++) {
@@ -227,15 +242,15 @@ private:
 
 	frame_param d_frame;
 	ofdm_param d_ofdm;
-	double d_snr;  // dB
-	double d_nom_freq;  // nominal frequency, Hz
-	double d_freq_offset;  // frequency offset, Hz
+	double d_snr;                                       // dB
+	double d_nom_freq;                                  // nominal frequency, Hz
+	double d_freq_offset;                               // frequency offset, Hz
 	viterbi_decoder d_decoder;
 
-	uint8_t d_rx_symbols[48 * MAX_SYM];
+	uint8_t d_rx_symbols[48 * MAX_SYM];                 // 最多MAX_SYM个符号
 	uint8_t d_rx_bits[MAX_ENCODED_BITS];
 	uint8_t d_deinterleaved_bits[MAX_ENCODED_BITS];
-	uint8_t out_bytes[MAX_PSDU_SIZE + 2]; // 2 for signal field
+	uint8_t out_bytes[MAX_PSDU_SIZE + 2];               // 2 for signal field
 
 	int copied;
 	bool d_frame_complete;
